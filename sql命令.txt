@@ -1,0 +1,167 @@
+-- 创建数据库
+create database behavior;
+use behavior;
+
+
+-- ods层
+-- 创建电信用户行为日志表
+drop table if exists ods_behavior_log;
+create external table ods_behavior_log
+(
+    line string
+)
+partitioned by (dt string)
+location '/behavior/ods/ods_behavior_log';
+
+-- 注册udf函数
+create function get_city_by_ip
+    as 'cn.wolfcode.udf.Ip2Loc' using jar 'hdfs://hadoop01:8020//spark/jars/hive_udf_custom-1.0.0.jar';
+
+create function url_trans_udf
+    as 'cn.wolfcode.udf.UrlHandlerUdf' using jar 'hdfs://hadoop01:8020//spark/jars/hive_udf_custom-1.0.0.jar';
+
+
+-- 创建dwd明细表数据
+-- 获取到城市, 省份
+-- 获取到url的资源路径  去掉查询参数
+-- 定义表
+DROP TABLE IF EXISTS dwd_behavior_log;
+
+CREATE EXTERNAL TABLE dwd_behavior_log
+(
+    `client_ip`   STRING COMMENT '客户端IP',
+    `device_type` STRING COMMENT '设备类型',
+    `type`        STRING COMMENT '上网类型 4G 5G WiFi',
+    `device`      STRING COMMENT '设备ID',
+    `url`         STRING COMMENT '访问的资源路径',
+    `city`        STRING COMMENT '城市',
+    `ts`          bigint comment "时间戳"
+) COMMENT '页面启动日志表'
+    PARTITIONED BY (`dt` STRING)
+    STORED AS ORC
+    LOCATION '/behavior/dwd/dwd_behavior_log'
+    TBLPROPERTIES ("orc.compress" = "snappy");
+
+-- 设置支持动态分区处理
+set hive.exec.dynamic.partition.mode=nonstrict;
+insert overwrite table dwd_behavior_log partition (dt)
+select get_json_object(line, '$.client_ip'),
+       get_json_object(line, '$.device_type'),
+       get_json_object(line, '$.type'),
+       get_json_object(line, '$.device'),
+       url_trans_udf(get_json_object(line, '$.url')),
+       split(get_city_by_ip(get_json_object(line, '$.client_ip')),"_")[0],
+       get_json_object(line, '$.time'),
+       dt
+from ods_behavior_log;
+
+
+-- dws层
+-- 定义表
+DROP TABLE IF EXISTS dws_behavior_log;
+CREATE EXTERNAL TABLE dws_behavior_log
+(
+    `client_ip`   STRING COMMENT '客户端IP',
+    `device_type` STRING COMMENT '设备类型',
+    `type`        STRING COMMENT '上网类型 4G 5G WiFi',
+    `device`      STRING COMMENT '设备ID',
+    `url`         STRING COMMENT '访问的资源路径',
+    `city`        STRING COMMENT '城市',
+    `ts`          bigint comment "时间戳"
+) COMMENT '页面启动日志表'
+    PARTITIONED BY (`dt` STRING)
+    STORED AS ORC
+    LOCATION '/behavior/dws/dws_behavior_log'
+    TBLPROPERTIES ("orc.compress" = "snappy");
+
+-- 装载数据
+insert overwrite table dws_behavior_log partition (dt)
+select client_ip, device_type, type, device, url, city, ts, dt from dwd_behavior_log;
+
+
+-- dim层
+-- 创建时间维度
+drop table if exists behavior.dim_date;
+create external table dim_date
+(
+    date_id string comment  "日期",
+    week_id string comment  "周",
+    week_day string  comment  "星期",
+    day string comment "一个月的第几天",
+    month string comment "第几个月",
+    quarter string comment "第几个季度",
+    year string comment "年度",
+    is_workday string comment "是否是工作日",
+    holiday_id string comment "国家法定假日"
+)
+row format delimited fields terminated by '\t'
+lines terminated by '\n'
+location '/behavior/dim/dim_date';
+
+-- 创建地区维度表
+drop table if exists dim_area;
+create external table dim_area
+(
+    city string comment "城市",
+    province string comment "省份",
+    area string comment "地区"
+)
+row format delimited fields terminated by '\t'
+lines terminated by '\n'
+location '/behavior/dim/dim_area';
+
+
+-- ads层
+-- 用户城市分布
+drop table if exists ads_user_city;
+create external table ads_user_city
+(
+    city    string comment "城市",
+    province STRING comment "省份",
+    area     STRING comment "区域",
+    dt      string comment "日期",
+    count   bigint comment "访问数量"
+) COMMENT '用户城市分布'
+ROW FORMAT DELIMITED FIELDS TERMINATED BY '\t'
+LOCATION '/behavior2/ads/ads_user_city';
+-- 插入统计数据
+insert into ads_user_city
+select  t1.city,t2.province,t2.area,t1.dt,count(1)
+from dws_behavior_log t1 join dim_area  t2 on t1.city=t2.city
+group by t1.city, t2.province,t2.area, t1.dt;
+
+-- 每个网站的上网模式
+drop table if exists ads_visit_type;
+create external table ads_visit_type
+(
+    url string comment "访问地址",
+    type string comment  "访问模式 4G 5G Wifi",
+    dt STRING comment "日期",
+    month String comment "月度",
+    quarter String comment "季度",
+    count bigint comment "统计数量"
+)comment "网站访问的上网模式分布"
+ROW FORMAT DELIMITED FIELDS TERMINATED BY '\t'
+location "/behavior2/ads/ads_visit_type";
+-- 插入数据
+insert overwrite table  ads_visit_type
+select t1.url, t1.type,t1.dt, t2.month, t2.quarter, count(1)
+from dws_behavior_log t1 join dim_date t2 on t1.dt=t2.date_id
+group by t1.url, t1.type, t1.dt, t2.month, t2.quarter;
+
+-- 每个网站的上网类型
+drop table if exists ads_visit_mode;
+create external table ads_visit_mode
+(
+    url         string comment "访问地址",
+    device_type string comment "上网模式 移动 pc",
+    dt          string comment "上网日期",
+    count       bigint comment "统计数量"
+) comment "网站的上网模式分布"
+ROW FORMAT DELIMITED FIELDS TERMINATED BY '\t'
+location "/behavior2/ads/ads_visit_mode";
+-- 插入数据
+insert into table ads_visit_mode
+select url, device_type,dt, count(1)
+from dws_behavior_log
+group by url, device_type,dt;
