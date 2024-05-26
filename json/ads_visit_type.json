@@ -1,0 +1,81 @@
+     {
+         "job": {
+             "setting": {
+                 "speed": {
+                     "channel": 1
+                 }
+             },
+             "content": [
+                 {
+                     "reader": {
+                         "name": "hdfsreader",
+                         "parameter": {
+                             "path": "/behavior2/ads/ads_visit_type/*",
+                             "defaultFS": "hdfs://hadoop01:8020",
+                             "column": [
+                                    {
+                                     "index": 0,
+                                     "type": "string"
+                                    },
+                                    {
+                                     "index": 1,
+                                     "type": "string"
+                                    },
+                                    {
+                                     "index": 2,
+                                     "type": "string"
+                                    },
+                                    {
+                                     "index": 3,
+                                     "type": "string"
+                                    },
+                                    {
+                                     "index": 4,
+                                     "type": "string"
+                                    }
+                                    {
+                                     "index": 5,
+                                     "type": "long"
+                                    }
+                             ],
+                             "fileType": "text",
+                             "encoding": "UTF-8",
+                             "fieldDelimiter": "\t"
+                         }
+     
+                     },
+     				"writer": {
+                         "name": "mysqlwriter",
+                         "parameter": {
+                             "writeMode": "replace",
+                             "username": "root",
+                             "password": "200316",
+                             "column": [
+                                 "url",
+                                 "type",
+     				 "dt",
+     				 "month",
+     				 "quarter",
+     				 "count"
+                             ],
+                             "session": [
+                             	"set session sql_mode='ANSI'"
+                             ],
+                             "preSql": [
+                                 "delete from ads_visit_type"
+                             ],
+                             "connection": [
+                                 {
+                                     "jdbcUrl": "jdbc:mysql://192.168.66.1:3306/behavior?useUnicode=true&characterEncoding=utf-8&useSSL=false&allowPublicKeyRetrieval=true",
+                                     "table": [
+                                         "ads_visit_type"
+                                     ]
+                                 }
+                             ]
+                         }
+                     }
+                 }
+             ]
+         }
+     }
+
