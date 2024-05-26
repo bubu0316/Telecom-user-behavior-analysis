@@ -1,0 +1,59 @@
+<?xml version="1.0"?>
+<!--
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License. See accompanying LICENSE file.
+-->
+<configuration>
+
+<!-- Site specific YARN configuration properties -->
+
+<!-- 指定YARN的主角色（ResourceManager）的地址 -->
+<property>
+	<name>yarn.resourcemanager.hostname</name>
+	<value>hadoop01</value>
+</property>
+
+<property>
+	<name>yarn.nodemanager.aux-services</name>
+	<value>mapreduce_shuffle</value>
+</property>
+
+<!-- 是否将对容器实施物理内存限制 -->
+<property>
+	<name>yarn.nodemanager.pmem-check-enabled</name>
+	<value>false</value>
+</property>
+
+<!-- 是否将对容器实施虚拟内存限制。 -->
+<property>
+	<name>yarn.nodemanager.vmem-check-enabled</name>
+	<value>false</value>
+</property>
+
+<!-- 开启日志聚集 -->
+<property>
+	<name>yarn.log-aggregation-enable</name>
+	<value>true</value>
+</property>
+
+<!-- 设置yarn历史服务器地址 -->
+<property>
+	<name>yarn.log.server.url</name>
+	<value>http://hadoop01:19888/jobhistory/logs</value>
+</property>
+
+<!-- 保存的时间7天 -->
+<property>
+	<name>yarn.log-aggregation.retain-seconds</name>
+	<value>604800</value>
+</property>
+</configuration>
