@@ -25,3 +25,10 @@
 - hadoop02 : jdk1.8 datanode,secondarynamenode nodemanager historyserver
 - hadoop03 : jdk1.8 datanode nodemanager spark hive datax
 ### 文件说明
+- env/custom_env.sh    环境变量配置，路径为/etc/profile.d/
+- files    一些安装hadoop,hive,spark等软件后需要自行更改的配置文件
+- json     从hdfs的数据导出到本地数据库的DataX的jobs
+- result    数据可视化结果展示，使用的是阿里云的QuickBI
+- screenshot     阶段性成果截图展示 datagrip.png : hiveserver2连接datagrip数据库展示    hdfs.png : hdfs的根目录文件展示
+- sql-code      数据仓库建模的sql代码
+- src      ODS层到DWD层的数据处理使用的java脚本
