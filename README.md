@@ -18,7 +18,7 @@
 - biz01 192.168.66.100
 - hadoop01 192.168.66.101
 - hadoop02 192.168.66.102
-- hadoop03 192.168.66.109
+- hadoop03 192.168.66.103
 ##### 集群规划
 - biz01 : jdk1.8 mysql flume
 - hadoop01 : jdk1.8 namenode,datanode resourcemanager,nodemanager
